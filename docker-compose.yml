@@ -1,0 +1,86 @@
+version: '3.7'
+services:
+
+  naming-server:
+    image: fk/netflix-eureka:0.0.1-SNAPSHOT
+    build:
+      context: netflix-eureka
+      dockerfile: Dockerfile
+    ports:
+      - "8761:8761"
+    restart: always
+    networks:
+      - currency-compose-network-fk
+      
+      
+  cloud-config-server:
+    image: fk/spring-cloud-config-server:0.0.1-SNAPSHOT
+    build:
+      context: spring-cloud-config-server
+      dockerfile: Dockerfile
+    #environment:
+      #RABBIT_URI: amqp://guest:guest@rabbitmq:5672
+    ports:
+      - "8888:8888"
+    restart: always
+    depends_on:
+       - naming-server
+    networks:
+      - currency-compose-network-fk
+
+
+  zuul-api-gateway:
+    image: fk/zuul-gateway:0.0.1-SNAPSHOT
+    build:
+      context: zuul-gateway
+      dockerfile: Dockerfile
+    #environment:
+      #RABBIT_URI: amqp://guest:guest@rabbitmq:5672
+    ports:
+      - "8765:8765"
+    restart: always
+    depends_on:
+      -  naming-server
+      -  cloud-config-server
+    networks:
+      - currency-compose-network-fk
+
+
+  currency-exchange-service:
+    image: fk/currency-exchange-service:0.0.1-SNAPSHOT
+    build:
+      context: currency-exchange-service
+      dockerfile: Dockerfile    
+    #environment:
+      #RABBIT_URI: amqp://guest:guest@rabbitmq:5672
+    ports:
+      - "8000:8000"
+    restart: always
+    depends_on:
+      -  naming-server
+      -  cloud-config-server
+    networks:
+      - currency-compose-network-fk
+
+
+  currency-conversion-service:
+    image: fk/currency-conversion-service:0.0.1-SNAPSHOT
+    build:
+      context: currency-conversion-service
+      dockerfile: Dockerfile    
+    ports:
+      - "8100:8100"
+    restart: always
+    #environment:
+      #CURRENCY_EXCHANGE_URI: http://currency-exchange-service:8000
+      #RABBIT_URI: amqp://guest:guest@rabbitmq:5672
+    depends_on:
+        -  currency-exchange-service
+        -  naming-server
+        -  cloud-config-server
+    networks:
+      - currency-compose-network-fk
+  
+# Networks to be created to facilitate communication between containers
+networks:
+  currency-compose-network-fk:
